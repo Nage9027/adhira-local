@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, ShoppingCart, Heart, User, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,28 @@ import {
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    setUser(null);
+    navigate("/login");
   };
 
   return (
@@ -75,22 +90,37 @@ const Navbar = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
                   <User className="h-5 w-5" />
-                  <span className="ml-2">Account</span>
+                  <span className="ml-2">{user ? `Hi, ${user.fullName}` : "Account"}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link to="/profile">My Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/profile">My Orders</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/seller/dashboard">Seller Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/login">Login</Link>
-                </DropdownMenuItem>
+                {user ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile">My Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/orders">My Orders</Link>
+                    </DropdownMenuItem>
+                    {user.role === "seller" && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/seller/dashboard">Seller Dashboard</Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={handleLogout}>
+                      Logout
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/login">Login</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/register">Register</Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -137,13 +167,29 @@ const Navbar = () => {
                 <ShoppingCart className="h-5 w-5" />
                 <span>Cart (3)</span>
               </Link>
-              <Link to="/profile" className="flex items-center space-x-3 py-2 text-muted-foreground hover:text-primary">
-                <User className="h-5 w-5" />
-                <span>My Account</span>
-              </Link>
-              <Link to="/login" className="flex items-center space-x-3 py-2 text-muted-foreground hover:text-primary">
-                <span>Login</span>
-              </Link>
+              {user ? (
+                <>
+                  <Link to="/profile" className="flex items-center space-x-3 py-2 text-muted-foreground hover:text-primary">
+                    <User className="h-5 w-5" />
+                    <span>My Profile</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-3 py-2 text-red-600 hover:text-red-800 w-full text-left"
+                  >
+                    <span>Logout</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="flex items-center space-x-3 py-2 text-muted-foreground hover:text-primary">
+                    <span>Login</span>
+                  </Link>
+                  <Link to="/register" className="flex items-center space-x-3 py-2 text-muted-foreground hover:text-primary">
+                    <span>Register</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}

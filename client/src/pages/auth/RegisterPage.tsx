@@ -1,4 +1,5 @@
 /** @format */
+import { isStrongPassword } from "../../utils/validatePassword";
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -69,7 +70,16 @@ const RegisterPage = () => {
 		setError("");
 		setLoading(true);
 
-		// Validation
+		// ✅ Password strength check
+		if (!isStrongPassword(formData.password)) {
+			setError(
+				"Password must be at least 8 characters long, include uppercase, lowercase, number, and special character."
+			);
+			setLoading(false);
+			return;
+		}
+
+		// ✅ Confirm password check
 		if (formData.password !== formData.confirmPassword) {
 			setError("Passwords do not match.");
 			setLoading(false);
@@ -178,11 +188,11 @@ const RegisterPage = () => {
 								<TabsTrigger value="seller">Seller</TabsTrigger>
 							</TabsList>
 
+							{/* ---------------- CUSTOMER FORM ---------------- */}
 							<TabsContent value="customer">
 								<form
 									onSubmit={handleRegister}
 									className="space-y-4">
-									{/* Customer form fields */}
 									<div className="space-y-2">
 										<Label htmlFor="fullName">Full Name</Label>
 										<div className="relative">
@@ -269,7 +279,6 @@ const RegisterPage = () => {
 												}
 												className="pl-10 pr-10"
 												required
-												minLength={6}
 											/>
 											<Button
 												type="button"
@@ -300,7 +309,6 @@ const RegisterPage = () => {
 												}
 												className="pl-10 pr-10"
 												required
-												minLength={6}
 											/>
 											<Button
 												type="button"
@@ -328,11 +336,11 @@ const RegisterPage = () => {
 								</form>
 							</TabsContent>
 
+							{/* ---------------- SELLER FORM ---------------- */}
 							<TabsContent value="seller">
 								<form
 									onSubmit={handleRegister}
 									className="space-y-4">
-									{/* Seller form fields */}
 									<div className="space-y-2">
 										<Label htmlFor="sellerFullName">Full Name</Label>
 										<div className="relative">
@@ -451,7 +459,6 @@ const RegisterPage = () => {
 												}
 												className="pl-10 pr-10"
 												required
-												minLength={6}
 											/>
 											<Button
 												type="button"
@@ -484,7 +491,6 @@ const RegisterPage = () => {
 												}
 												className="pl-10 pr-10"
 												required
-												minLength={6}
 											/>
 											<Button
 												type="button"
