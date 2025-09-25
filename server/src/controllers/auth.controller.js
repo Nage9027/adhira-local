@@ -1,12 +1,16 @@
 /** @format */
 
-// src/controllers/auth.controller.js
 const authService = require("../services/auth.service");
 const { successResponse, errorResponse } = require("../utils/response");
 
 const registerCustomer = async (req, res) => {
 	try {
 		const { fullName, email, mobileNumber, address, password } = req.body;
+
+		// Validate required fields
+		if (!fullName || !email || !mobileNumber || !address || !password) {
+			return errorResponse(res, "All fields are required", 400);
+		}
 
 		// Check if user already exists
 		const existingUser = await authService.checkEmailExists(email);
@@ -17,17 +21,13 @@ const registerCustomer = async (req, res) => {
 		// Hash password
 		const hashedPassword = await authService.hashPassword(password);
 
-		// Generate token
-		const token = authService.generateToken({ email, role: "customer" });
-
-		// Create user data
+		// Create user data - Use UPPERCASE for role to match Prisma enum
 		const userData = {
 			fullName,
 			email,
 			mobileNumber,
 			password: hashedPassword,
-			role: "customer",
-			token,
+			role: "CUSTOMER", // Changed to uppercase
 		};
 
 		// Create customer data
@@ -36,18 +36,28 @@ const registerCustomer = async (req, res) => {
 		// Create customer
 		const result = await authService.createCustomer(userData, customerData);
 
+		// Generate token AFTER user creation (with user ID)
+		const token = authService.generateToken({
+			id: result.user.id,
+			email: result.user.email,
+			role: result.user.role,
+		});
+
+		// Update user token in database
+		await authService.updateUserToken(result.user.id, token);
+
 		// Remove password from response
 		const { password: _, ...userWithoutPassword } = result.user;
 
-		console.log(
-			"Customer account created successfully",
-			userWithoutPassword,
-			token,
-		);
+		console.log("Customer account created successfully");
 		return successResponse(
 			res,
 			"Customer account created successfully",
-			{ user: userWithoutPassword, token },
+			{ 
+				user: userWithoutPassword, 
+				token,
+				redirectTo: "/homepage" // Add this for frontend guidance
+			},
 			201,
 		);
 	} catch (error) {
@@ -68,6 +78,11 @@ const registerSeller = async (req, res) => {
 			password,
 		} = req.body;
 
+		// Validate required fields
+		if (!fullName || !email || !mobileNumber || !shopName || !businessAddress || !password) {
+			return errorResponse(res, "All fields are required", 400);
+		}
+
 		// Check if user already exists
 		const existingUser = await authService.checkEmailExists(email);
 		if (existingUser) {
@@ -77,17 +92,13 @@ const registerSeller = async (req, res) => {
 		// Hash password
 		const hashedPassword = await authService.hashPassword(password);
 
-		// Generate token
-		const token = authService.generateToken({ email, role: "seller" });
-
-		// Create user data
+		// Create user data - Use UPPERCASE for role
 		const userData = {
 			fullName,
 			email,
 			mobileNumber,
 			password: hashedPassword,
-			role: "seller",
-			token,
+			role: "SELLER", // Changed to uppercase
 		};
 
 		// Create seller data
@@ -100,18 +111,28 @@ const registerSeller = async (req, res) => {
 		// Create seller
 		const result = await authService.createSeller(userData, sellerData);
 
+		// Generate token AFTER user creation
+		const token = authService.generateToken({
+			id: result.user.id,
+			email: result.user.email,
+			role: result.user.role,
+		});
+
+		// Update user token in database
+		await authService.updateUserToken(result.user.id, token);
+
 		// Remove password from response
 		const { password: _, ...userWithoutPassword } = result.user;
 
-		console.log(
-			"Seller account created successfully",
-			userWithoutPassword,
-			token,
-		);
+		console.log("Seller account created successfully");
 		return successResponse(
 			res,
 			"Seller account created successfully",
-			{ user: userWithoutPassword, token },
+			{ 
+				user: userWithoutPassword, 
+				token,
+				redirectTo: "/seller-dashboard" // Add redirect hint
+			},
 			201,
 		);
 	} catch (error) {
@@ -120,10 +141,14 @@ const registerSeller = async (req, res) => {
 	}
 };
 
-//-------------------------------------LOGIN-------------------------------------
 const login = async (req, res) => {
 	try {
 		const { email, password } = req.body;
+
+		// Validate required fields
+		if (!email || !password) {
+			return errorResponse(res, "Email and password are required", 400);
+		}
 
 		// Find user by email
 		const user = await authService.findUserByEmail(email);
@@ -157,19 +182,26 @@ const login = async (req, res) => {
 
 		// Include additional data based on role
 		let userData = { ...userWithoutPassword };
-		if (user.role === "customer" && user.customer) {
+		if (user.role === "CUSTOMER" && user.customer) {
 			userData.address = user.customer.address;
-		} else if (user.role === "seller" && user.seller) {
+		} else if (user.role === "SELLER" && user.seller) {
 			userData.shopName = user.seller.shopName;
 			userData.shopDescription = user.seller.shopDescription;
 			userData.businessAddress = user.seller.businessAddress;
 		}
 
-		console.log("Login successful", userData, token);
+		// Determine redirect path based on role
+		const redirectTo = user.role === "SELLER" ? "/seller-dashboard" : "/homepage";
+
+		console.log("Login successful");
 		return successResponse(
 			res,
 			"Login successful",
-			{ user: userData, token },
+			{ 
+				user: userData, 
+				token,
+				redirectTo 
+			},
 			200,
 		);
 	} catch (error) {
